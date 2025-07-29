@@ -1,361 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>CHIIRP Demo – Calculator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-/*──────────────── 1 ▸ GLOBAL FOUNDATION ────────────────*/
-html,body{margin:0;padding:0}
-body{
-  min-height:100vh;display:flex;justify-content:center;align-items:center;
-  font-family:system-ui,sans-serif;color:#fff;overflow-x:hidden;position:relative}
-body::before{               /* slow‑spinning gradient backdrop */
-  content:"";position:fixed;top:50%;left:50%;z-index:-1;
-  width:calc(100vw + 100vh);height:calc(100vw + 100vh);
-  background:linear-gradient(130deg,#fcb900 0%,#000 100%);
-  transform:translate(-50%,-50%) rotate(0deg);
-  animation:spin 20s linear infinite}
-@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
-
-/* wrapper that centres the card */
-.slide{position:absolute;inset:0;display:grid;place-items:center;
-  padding:2rem;text-align:center}
-
-/* base card shell */
-.slide-content.inputs,
-.slide .slide-content.estimation{
-  background:rgba(255,255,255,.1);backdrop-filter:blur(10px);
-  border-radius:12px;box-shadow:0 8px 24px #0003;
-  max-height:100dvh;overflow-y:auto;overscroll-behavior:contain}
-
-/*──────────────── 2 ▸ INPUT SLIDE (unchanged) ──────────*/
-.slide-content.inputs{padding:2rem;max-width:600px;width:100%}
-.slide-content.inputs h1{margin:.5rem 0;font-size:clamp(2.4rem,6vw,4rem)}
-.slide-content.inputs h2{margin:0 0 1.5rem;font-size:clamp(1.2rem,3vw,1.6rem);font-weight:300}
-
-.input-row{margin-top:2.3rem;display:flex;flex-wrap:wrap;gap:1rem}
-.input-row input{flex:1 1 180px;padding:.9rem;border:none;border-radius:6px;text-align:center}
-
-.plan-selector{display:flex;gap:2rem;justify-content:center;margin-top:1.5rem;padding:.75rem 1rem;
-  background:rgba(255,255,255,.08);border:1px solid #ffffff4d;border-radius:8px}
-.plan-selector label{padding:.5rem 1rem;color:#fff;border-radius:6px;cursor:pointer;transition:.2s}
-.plan-selector label:hover{background:rgba(255,255,255,.2)}
-.plan-selector input:checked+span{font-weight:700;text-decoration:underline}
-
-/*──────────────── 3 ▸ RESULT SLIDES – DESKTOP (≥641 px) ─*/
-.slide .slide-content.estimation{padding:2rem 2rem 5rem;display:grid;place-items:center;position:relative}
-.est-grid{display:grid;grid-template-columns:360px minmax(auto,1fr);gap:5rem;align-items:start}
-
-.est-card{background:rgba(255,255,255,.08);border-radius:8px;padding:1.5rem;display:flex;flex-direction:column}
-
-.details-table h1{margin-bottom:.6rem}
-.details-table .subhead{margin-bottom:1.3rem}
-.details-table table{width:100%;border-collapse:collapse;margin-bottom:1.3rem}
-.details-table th,.details-table td{padding:.6rem .8rem;border-bottom:1px solid #ffffff33;text-align:left}
-
-.highlight-table{align-items:center;text-align:center}
-.highlight-grid{display:flex;flex-direction:column;align-items:center;gap:3rem;margin-bottom:3rem;width:100%}
-.highlight-number{font-size:clamp(3.2rem,7vw,5rem);white-space:nowrap;line-height:1.05;
-  color:#ffeb3b;font-weight:700;text-shadow:0 2px 6px #0006}
-.highlight-pair{display:flex;flex-direction:column;align-items:center;gap:.35rem}
-.subtext{font-size:1rem;letter-spacing:.05rem;text-transform:uppercase;margin:0}
-
-.highlight-footer{display:flex;gap:1rem;justify-content:center;width:100%}
-
-button{margin-top:2rem;padding:.9rem 1.8rem;font-size:1rem;border:none;border-radius:6px;
-  cursor:pointer;background:#ffb703;color:#002844;font-weight:700;transition:opacity .25s}
-button:disabled{opacity:.4}
-.restartBtn{position:fixed;bottom:2rem;right:2rem;z-index:1000}
-
-#sumMonthlyPair{display:none}
-#slideSum .highlight-grid{grid-template-rows:auto auto}
-#slideSum .sum-footer{margin-top:1rem;display:flex;justify-content:center}
-#slideSum .sum-footer .backBtn{padding:.9rem 1.2rem}
-
-/*──────────────── 4 ▸ RESULT SLIDES – MOBILE (≤640 px) ─*/
-@media (max-width:640px){
-  .slide .slide-content.estimation{
-    padding:1.25rem;display:flex;flex-direction:column;max-width:480px;width:100%}
-
-  /* stack:   title  •  highlight  •  buttons   */
-  .est-grid{display:flex;flex-direction:column;gap:1.25rem}
-
-  /* show only title line from the old “left” pane */
-  .details-table{background:transparent;padding:0;margin:0}
-  .details-table .subhead,.details-table table{display:none}
-  .details-table h1{font-size:clamp(1.4rem,6vw,1.8rem);margin:0}
-
-  /* highlight block uses full width */
-  .highlight-table{background:rgba(255,255,255,.08);padding:1.25rem;border-radius:8px;
-    align-items:flex-start;text-align:left}
-  .highlight-grid{gap:1.4rem;margin:0 0 1.2rem}
-  .highlight-number{font-size:clamp(2.4rem,8vw,3rem);white-space:normal}
-
-  /* buttons always locked to bottom of card */
-  .highlight-footer{margin-top:auto}
-  .highlight-footer button,
-  #slideSum .sum-footer button{flex:1 1 48%}
-}
-
-/* gutters for ultra‑narrow phones */
-@media (max-width:400px){
-  .slide-content.inputs,
-  .slide .slide-content.estimation{margin-inline:1rem}
-}
-
-/* height‑based tweaks to avoid scroll on short screens */
-@media (max-height:800px){
-  .highlight-number{font-size:clamp(2.6rem,7vw,3rem)}
-  .highlight-grid{gap:1rem}}
-@media (max-height:700px){
-  .highlight-number{font-size:clamp(2.3rem,7vw,2.7rem)}}
-
-/*──────────────── 5 ▸ UTILITIES ─────────────────────────*/
-.valItem{opacity:0;transform:translateX(-60px);transition:.6s ease}
-.valItem.show{opacity:1;transform:translateX(0)}
-input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{display:none}
-</style>
-
-
-
-
-
-
-</head>
-<body>
-<!-- ────────────────  SLIDE 1 – INPUTS ──────────────── -->
-<section class="slide" id="slideInputs">
-  <div class="slide-content inputs">
-    <h1>CHIIRP DEMO</h1>
-    <h2>SEE THE VALUE OF CHIIRP</h2>
-
-    <div class="input-row">
-      <!-- Follow-Up (quotes) -->
-      <input id="quotes"    type="number" step="1"    min="0"
-             placeholder="Estimates sent per month"
-             aria-label="Estimates sent per month">
-    
-      <input id="quoteWins" type="number" step="1"    min="0"
-             placeholder="Estimates Accepted"
-             aria-label="Estimates Accepted">
-    
-      <!-- Speed-to-Lead (forms) -->
-      <input id="leads"     type="number" step="1"    min="0"
-             placeholder="Lead form submissions per month"
-             aria-label="Lead from submissions per month">
-    
-      <input id="formWins"  type="number" step="1"    min="0"
-             placeholder="Jobs scheduled from forms"
-             aria-label="Jobs scheduled from forms">
-    
-      <!-- Call Recovery (missed calls) -->
-      <input id="missedCalls" type="number" step="1" min="0"
-             placeholder="Missed calls per month"
-             aria-label="Monthly number of missed or abandoned calls">
-    
-      <input id="missedWins"  type="number" step="1" min="0"
-             placeholder="Jobs scheduled from missed calls"
-             aria-label="Closed deals that started as missed calls per month">
-    
-      <!-- Revenue (shared) -->
-      <input id="avgRev"    type="number" step="0.01" min="0"
-             placeholder="Avg revenue per job ($)"
-             aria-label="Average revenue per closed sale in dollars">
-    </div>
-
-      
-
-    <!-- Fixed plan cost for ROI -->
-    <input type="hidden" name="plan" value="1050">
-
-
-    <button id="calcBtn">Next ➡</button>
-  </div>
-</section>
-
-
-
-<!-- ────────────────  SLIDE 2 – ESTIMATION FOLLOW-UP ──────────────── -->
-<section class="slide" id="slideEst" style="display:none; opacity:0; transition:opacity .6s">
-  <div class="slide-content estimation">
-    <div class="est-grid">
-
-      <!-- LEFT CARD -->
-      <div class="est-card details-table">
-        <h1>Estimate: Follow-Up</h1>
-          <p class="subhead">Based on <strong><em>your</em></strong> monthly quotes and wins</p>
-        <table>
-          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-          <tbody id="estValues"><!-- JS injects rows here --></tbody>
-        </table>
-
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CHIIRP Demo – Calculator</title>
+    <style>
+      /* ─────────── 0 ▸ RESET & VARIABLES ─────────── */
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+      html,body{height:100%;-webkit-text-size-adjust:100%}
+      :root{--gold-050:#fff9e5;--gold-300:#ffd453;--gold-500:#fcb900;--gold-600:#d99e00;--text-dark:#002844;--hl-grad:linear-gradient(135deg,#b9973b 0%,#80652b 100%);--radius:12px}
+      /* ─────────── 1 ▸ GLOBAL LAYOUT ─────────── */
+      body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;background:var(--gold-050);color:var(--text-dark);display:flex;flex-direction:column}
+      .slide{flex:1 0 100%;width:100%;max-width:560px;margin:auto;padding:clamp(1rem,4vw,1.75rem);display:none;flex-direction:column;align-items:center;justify-content:flex-start;background:linear-gradient(180deg,#59461f 0%,var(--gold-600) 100%);opacity:0;transition:opacity .6s ease}
+      .slide.active{display:flex;opacity:1}
+      @supports(padding:env(safe-area-inset-bottom)){body{padding-bottom:env(safe-area-inset-bottom)}}
+      /* ─────────── 2 ▸ TYPOGRAPHY ─────────── */
+      .heading-xl{font-size:clamp(2rem,6vw,2.75rem);font-weight:700;color:#fff;text-align:center;margin-bottom:.25rem}
+      .heading-md{color:#fff;font-weight:400;font-size:clamp(1rem,4vw,1.25rem);text-align:center;margin-bottom:1.5rem}
+      .subhead{font-size:.9rem;font-weight:300;color:#e8e8e8;margin-bottom:1rem;text-align:center}
+      /* ─────────── 3 ▸ INPUTS ─────────── */
+      .inputs-group{display:flex;flex-direction:column;gap:1.25rem;width:100%;margin-block:1.5rem}
+      input[type=number]{width:100%;padding:.9rem 1rem;font-size:1rem;border:none;border-radius:var(--radius);text-align:center;background:#fff;color:#1a1a1a;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+      input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+      input[type=number]:focus{outline:2px solid var(--gold-500);outline-offset:1px}
+      /* ─────────── 4 ▸ BUTTONS ─────────── */
+      button{appearance:none;border:none;border-radius:var(--radius);padding:.85rem 1.6rem;font-size:1rem;font-weight:700;cursor:pointer;background:var(--gold-500);color:var(--text-dark);transition:filter .2s}
+      button:disabled{filter:grayscale(1) opacity(.5);cursor:not-allowed}
+      button:not(:disabled):hover{filter:brightness(1.1)}
+      button.full{width:100%}
+      button.secondary{background:#fff;color:var(--text-dark)}
+      .nav-row{width:100%;display:flex;gap:1rem;margin-top:2rem}
+      /* ─────────── 5 ▸ TABLES ─────────── */
+      table{width:100%;border-collapse:collapse;margin-bottom:1.25rem;font-size:.9rem;color:#fff}
+      th,td{padding:.5rem .4rem;border-bottom:1px solid rgba(255,255,255,.25);text-align:left}
+      @media(max-width:420px){table{display:none}}
+      /* ─────────── 6 ▸ HIGHLIGHT BLOCKS ─────────── */
+      .highlight{width:100%;background:var(--hl-grad);border-radius:var(--radius);padding:1.25rem;text-align:center;margin-block:1.25rem}
+      .highlight-number{font-size:clamp(2.5rem,10vw,3rem);font-weight:700;color:var(--gold-300);text-shadow:0 2px 6px rgba(0,0,0,.4)}
+      .highlight-label{text-transform:uppercase;font-size:.9rem;letter-spacing:.04em;color:#d9d9d9;margin-top:.35rem}
+      /* ─────────── 7 ▸ DESKTOP POLISH ─────────── */
+      @media(min-width:640px){.slide{border-radius:16px}}
+      /* ─────────── 8 ▸ RESTART BUTTON ─────────── */
+      .restartBtn{position:fixed;bottom:1.5rem;right:1rem;z-index:999}
+    </style>
+  </head>
+  <body>
+    <!-- ───────────── Slide 1 – INPUTS ───────────── -->
+    <section id="slideInputs" class="slide active" style="display:flex;opacity:1" role="region" aria-labelledby="title-input">
+      <h1 id="title-input" class="heading-xl">CHIIRP DEMO</h1>
+      <p class="heading-md">SEE THE VALUE OF CHIIRP</p>
+      <div class="inputs-group" role="group" aria-label="Business metrics">
+        <input id="quotes" type="number" step="1" min="0" placeholder="Estimates sent per month" aria-label="Estimates sent per month" />
+        <input id="quoteWins" type="number" step="1" min="0" placeholder="Estimates accepted" aria-label="Estimates accepted" />
+        <input id="leads" type="number" step="1" min="0" placeholder="Lead form submissions per month" aria-label="Lead form submissions per month" />
+        <input id="formWins" type="number" step="1" min="0" placeholder="Jobs scheduled from forms" aria-label="Jobs scheduled from forms" />
+        <input id="missedCalls" type="number" step="1" min="0" placeholder="Missed calls per month" aria-label="Missed calls per month" />
+        <input id="missedWins" type="number" step="1" min="0" placeholder="Jobs scheduled from missed calls" aria-label="Jobs scheduled from missed calls" />
+        <input id="avgRev" type="number" step="0.01" min="0" placeholder="Avg revenue per job ($)" aria-label="Average revenue per job" />
+        <input type="hidden" name="plan" value="1050" />
       </div>
+      <button id="calcBtn" class="full">Next →</button>
+    </section>
 
-      <!-- RIGHT CARD -->
-      <div class="est-card highlight-table">
-        <h3>Additional Revenue:</h3>
-
-        <div class="highlight-grid">
-          <div class="highlight-pair">
-            <p id="estGainMonthly" class="highlight-number">—</p>
-            <p class="subtext">per month</p>
-          </div>
-          <div class="highlight-pair">
-            <p id="estGainAnnual"  class="highlight-number">—</p>
-            <p class="subtext">per year</p>
-          </div>
-        </div>
-      </div><!-- end .highlight-table -->
-
-      <!-- FOOTER BUTTON -->
-      <!-- slideEst footer -->
-      <div class="highlight-footer">
-        <button id="backToInputs" class="backBtn">⬅ Back</button>
-        <button id="toS2L"        class="nextBtn">Next ➡</button>
+    <!-- ───────────── Slide 2 – ESTIMATION FOLLOW‑UP ───────────── -->
+    <section id="slideEst" class="slide" style="display:none;opacity:0" aria-labelledby="title-followup">
+      <h2 id="title-followup" class="heading-xl">Estimate: Follow‑Up</h2>
+      <p class="subhead">Based on <strong><em>your</em></strong> monthly quotes and wins</p>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody id="estValues"></tbody>
+      </table>
+      <div class="highlight"><p id="estGainMonthly" class="highlight-number">—</p><p class="highlight-label">per month</p></div>
+      <div class="highlight"><p id="estGainAnnual" class="highlight-number">—</p><p class="highlight-label">per year</p></div>
+      <div class="nav-row">
+        <button id="backToInputs" class="secondary">← Back</button>
+        <button id="toS2L">Next →</button>
       </div>
+    </section>
 
-
-    </div><!-- end .est-grid -->
-  </div><!-- end .slide-content.estimation -->
-</section><!-- end .slide -->
-
-
-
-
-<!-- ────────────────  SLIDE 3 – SPEED-TO-LEAD ──────────────── -->
-<section class="slide" id="slideS2L" style="display:none; opacity:0; transition:opacity .6s">
-  <div class="slide-content estimation">
-    <div class="est-grid">
-
-      <!-- LEFT CARD: details + formulas -->
-      <div class="est-card details-table">
-        <h1>Speed-to-Lead</h1>
-          <p class="subhead">Based on <strong><em>your</em></strong> monthly form submissions and wins</p>
-        <table>
-          <thead>
-            <tr><th>Metric</th><th>Value</th></tr>
-          </thead>
-          <tbody id="s2lValues">
-            <!-- Rows will be injected here -->
-          </tbody>
-        </table>
+    <!-- ───────────── Slide 3 – SPEED‑TO‑LEAD ───────────── -->
+    <section id="slideS2L" class="slide" style="display:none;opacity:0" aria-labelledby="title-s2l">
+      <h2 id="title-s2l" class="heading-xl">Speed‑to‑Lead</h2>
+      <p class="subhead">Based on <strong><em>your</em></strong> monthly form submissions and wins</p>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody id="s2lValues"></tbody>
+      </table>
+      <div class="highlight"><p id="s2lGainMonthly" class="highlight-number">—</p><p class="highlight-label">per month</p></div>
+      <div class="highlight"><p id="s2lGainAnnual" class="highlight-number">—</p><p class="highlight-label">per year</p></div>
+      <div class="nav-row">
+        <button id="backToEst" class="secondary">← Back</button>
+        <button id="toMissed">Next →</button>
       </div>
+    </section>
 
-      <!-- RIGHT CARD: highlight + button -->
-      <div class="est-card highlight-table">
-        <h3>Additional Revenue:</h3>
-        <div class="highlight-grid">
-          <div class="highlight-pair">
-            <p id="s2lGainMonthly" class="highlight-number">—</p>
-            <p class="subtext">per month</p>
-          </div>
-          <div class="highlight-pair">
-            <p id="s2lGainAnnual" class="highlight-number">—</p>
-            <p class="subtext">per year</p>
-          </div>
-        </div>
-        <!-- slideS2L  (Speed-to-Lead) -->
-        <div class="highlight-footer">
-          <button id="backToEst"  class="backBtn">⬅ Back</button>
-          <button id="toMissed"   class="nextBtn">Next ➡</button>
-        </div>
+    <!-- ───────────── Slide 4 – ABANDONED‑CALL RECOVERY ───────────── -->
+    <section id="slideMissed" class="slide" style="display:none;opacity:0" aria-labelledby="title-missed">
+      <h2 id="title-missed" class="heading-xl">Abandoned‑Call Recovery</h2>
+      <p class="subhead">Based on <strong><em>your</em></strong> monthly abandoned calls and wins</p>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody id="missValues"></tbody>
+      </table>
+      <div class="highlight"><p id="missGainMonthly" class="highlight-number">—</p><p class="highlight-label">per month</p></div>
+      <div class="highlight"><p id="missGainAnnual" class="highlight-number">—</p><p class="highlight-label">per year</p></div>
+      <div class="nav-row">
+        <button id="backToS2L" class="secondary">← Back</button>
+        <button id="toSum">Next →</button>
       </div>
+    </section>
 
-    </div>
-  </div>
-</section>
-
-
-<!-- ────────────────  SLIDE 4 – ABANDONED-CALL RECOVERY ──────────────── -->
-<section class="slide" id="slideMissed" style="display:none; opacity:0; transition:opacity .6s">
-  <div class="slide-content estimation">
-    <div class="est-grid">
-
-      <!-- LEFT CARD: details + formulas -->
-      <div class="est-card details-table">
-        <h1>Abandoned-Call Recovery</h1>
-          <p class="subhead">Based on <strong><em>your</em></strong> monthly abandoned calls and wins</p>
-        <table>
-          <thead>
-            <tr><th>Metric</th><th>Value</th></tr>
-          </thead>
-          <tbody id="missValues">
-            <!-- JS injects rows here -->
-          </tbody>
-        </table>
+    <!-- ───────────── Slide 5 – SUMMARY ───────────── -->
+    <section id="slideSum" class="slide" style="display:none;opacity:0" aria-labelledby="title-summary">
+      <h2 id="title-summary" class="heading-xl">Total Additional Revenue</h2>
+      <table>
+        <thead><tr><th>Campaign</th><th>Monthly Gain</th></tr></thead>
+        <tbody id="sumValues"></tbody>
+      </table>
+      <div class="highlight" id="sumMonthlyPair"><p id="sumGainMonthly" class="highlight-number">—</p><p class="highlight-label">per month</p></div>
+      <div class="highlight"><p id="sumGainAnnual" class="highlight-number">—</p><p class="highlight-label">per year</p></div>
+      <div class="highlight"><p id="sumROI" class="highlight-number">—×</p><p class="highlight-label">ROI</p></div>
+      <div class="nav-row" style="margin-top:1.5rem">
+        <button id="backToMissed" class="secondary">← Back</button>
       </div>
+    </section>
 
-      <!-- RIGHT CARD: highlight + button -->
-      <div class="est-card highlight-table">
-        <h3>Additional Revenue:</h3>
-        <div class="highlight-grid">
-          <div class="highlight-pair">
-            <p id="missGainMonthly" class="highlight-number">—</p>
-            <p class="subtext">per month</p>
-          </div>
-          <div class="highlight-pair">
-            <p id="missGainAnnual" class="highlight-number">—</p>
-            <p class="subtext">per year</p>
-          </div>
-        </div>
-        <!-- slideMissed  (Call Recovery) -->
-        <div class="highlight-footer">
-          <button id="backToS2L" class="backBtn">⬅ Back</button>
-          <button id="toSum"     class="nextBtn">Next ➡</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ────────────────  SLIDE 5 – SUMMARY ──────────────── -->
-<section class="slide" id="slideSum" style="display:none; opacity:0; transition:opacity .6s">
-  <div class="slide-content estimation">
-
-    <div class="est-grid">
-      <!-- LEFT CARD – monthly breakdown -->
-      <div class="est-card details-table">
-        <h1>Breakdown by Campaign</h1>
-        <table>
-          <thead><tr><th>Campaign</th><th>Monthly Gain</th></tr></thead>
-          <tbody id="sumValues"></tbody>
-        </table>
-      </div>
-
-      <!-- RIGHT CARD – totals -->
-      <div class="est-card highlight-table">
-        <h3>Total Additional Revenue:</h3>
-        <div class="highlight-grid">
-          <div class="highlight-pair" id="sumMonthlyPair">
-            <p id="sumGainMonthly" class="highlight-number">—</p>
-            <p class="subtext">per month</p>
-          </div>
-          <div class="highlight-pair">
-            <p id="sumGainAnnual" class="highlight-number">—</p>
-            <p class="subtext">per year</p>
-          </div>
-          <div class="highlight-pair">
-            <p id="sumROI" class="highlight-number">—×</p>
-            <p class="subtext">ROI</p>
-          </div>
-        </div>
-      </div><!-- /.highlight-table -->
-    </div><!-- /.est-grid -->
-
-    <!-- Back button sits below the cards -->
-    <div class="sum-footer">
-      <button id="backToMissed" class="backBtn">⬅ Back</button>
-    </div>
-
-
-
-  </div><!-- /.slide-content.estimation -->
-
-  <!-- Restart button fixed bottom-right -->
-  <button class="restartBtn" onclick="location.reload()">Restart ↻</button>
-</section>
+    <!-- Restart button -->
+    <button class="restartBtn" onclick="location.reload()">Restart ↻</button>
+  </body>
+</html>
 
 
 

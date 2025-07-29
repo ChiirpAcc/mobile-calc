@@ -10,8 +10,24 @@
 <!-- Slide 5 -->
 <section id="slideSum" class="slide" aria-labelledby="title-summary"><h2 id="title-summary" class="heading-xl">Total Additional Revenue</h2><table><thead><tr><th>Campaign</th><th>Monthly Gain</th></tr></thead><tbody id="sumValues"></tbody></table><div class="highlight"><p id="sumGainAnnual" class="highlight-number">—</p><p class="highlight-label">per year</p></div><div class="highlight"><p id="sumROI" class="highlight-number">—×</p><p class="highlight-label">ROI</p></div><a id="bookDemo" href="https://chiirp.com/demo/" target="_blank" class="btn" style="margin-top:1.5rem">Book Demo</a><div class="nav-row" style="margin-top:1.5rem"><button id="backToMissed" class="secondary">← Back</button><button id="restartBtn">Restart ↻</button></div></section>
 <!-- original calculator JS expected elsewhere, not modified here -->
-<script>document.getElementById("restartBtn").onclick=()=>location.reload();</script></body></html>
-
+<script>
+/* ---------- minimal nav & restart helpers (non‑intrusive) ---------- */
+function revealSlide(id){document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById(id);if(el){el.classList.add('active');window.scrollTo(0,0);}}
+const navMap=[
+  ['calcBtn','slideEst'],
+  ['toS2L','slideS2L'],
+  ['toMissed','slideMissed'],
+  ['toSum','slideSum'],
+  ['backToInputs','slideInputs'],
+  ['backToEst','slideEst'],
+  ['backToS2L','slideS2L'],
+  ['backToMissed','slideMissed']
+];
+navMap.forEach(([btn,slide])=>{const el=document.getElementById(btn);if(el)el.addEventListener('click',()=>revealSlide(slide));});
+/* Restart & external links */
+const restart=document.getElementById('restartBtn');if(restart)restart.addEventListener('click',()=>location.reload());
+const demo=document.getElementById('bookDemo');if(demo)demo.addEventListener('click',e=>{/* nothing needed custom; href handles */});
+</script></body></html>
 
 
 <script>

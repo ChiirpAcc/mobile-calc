@@ -29,6 +29,23 @@ let skippedMiss = false;
 
   /* UI helpers */
   function revealSlide(id) {
+  document.querySelectorAll('.slide').forEach(s => {
+    // save original display once
+    if (!s.dataset.origDisplay) s.dataset.origDisplay = getComputedStyle(s).display;
+    s.style.display = 'none';
+    s.style.opacity = 0;
+  });
+  const el = g(id);
+  el.style.display = el.dataset.origDisplay;   // restore flex vs block
+  requestAnimationFrame(() => (el.style.opacity = 1));
+}
+
+// Simple validity guard before any calculations
+function inputsValid(...vals) {
+  return vals.every(v => Number.isFinite(v));
+}
+
+  function revealSlide(id) {
     document.querySelectorAll('.slide').forEach(s => s.style.display = 'none');
     const el = g(id);
     el.style.display = 'block';

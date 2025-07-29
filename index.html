@@ -1,1 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CHIIRP Demo – Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+/*──────────────── 1 ▸ GLOBAL FOUNDATION ────────────────*/
+html,body{margin:0;padding:0}
+body{
+  min-height:100vh;display:flex;justify-content:center;align-items:center;
+  font-family:system-ui,sans-serif;color:#fff;overflow-x:hidden;position:relative}
+body::before{               /* slow‑spinning gradient backdrop */
+  content:"";position:fixed;top:50%;left:50%;z-index:-1;
+  width:calc(100vw + 100vh);height:calc(100vw + 100vh);
+  background:linear-gradient(130deg,#fcb900 0%,#000 100%);
+  transform:translate(-50%,-50%) rotate(0deg);
+  animation:spin 20s linear infinite}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
 
+/* wrapper that centres the card */
+.slide{position:absolute;inset:0;display:grid;place-items:center;
+  padding:2rem;text-align:center}
+
+/* base card shell */
+.slide-content.inputs,
+.slide .slide-content.estimation{
+  background:rgba(255,255,255,.1);backdrop-filter:blur(10px);
+  border-radius:12px;box-shadow:0 8px 24px #0003;
+  max-height:100dvh;overflow-y:auto;overscroll-behavior:contain}
+
+/*──────────────── 2 ▸ INPUT SLIDE (unchanged) ──────────*/
+.slide-content.inputs{padding:2rem;max-width:600px;width:100%}
+.slide-content.inputs h1{margin:.5rem 0;font-size:clamp(2.4rem,6vw,4rem)}
+.slide-content.inputs h2{margin:0 0 1.5rem;font-size:clamp(1.2rem,3vw,1.6rem);font-weight:300}
+
+.input-row{margin-top:2.3rem;display:flex;flex-wrap:wrap;gap:1rem}
+.input-row input{flex:1 1 180px;padding:.9rem;border:none;border-radius:6px;text-align:center}
+
+.plan-selector{display:flex;gap:2rem;justify-content:center;margin-top:1.5rem;padding:.75rem 1rem;
+  background:rgba(255,255,255,.08);border:1px solid #ffffff4d;border-radius:8px}
+.plan-selector label{padding:.5rem 1rem;color:#fff;border-radius:6px;cursor:pointer;transition:.2s}
+.plan-selector label:hover{background:rgba(255,255,255,.2)}
+.plan-selector input:checked+span{font-weight:700;text-decoration:underline}
+
+/*──────────────── 3 ▸ RESULT SLIDES – DESKTOP (≥641 px) ─*/
+.slide .slide-content.estimation{padding:2rem 2rem 5rem;display:grid;place-items:center;position:relative}
+.est-grid{display:grid;grid-template-columns:360px minmax(auto,1fr);gap:5rem;align-items:start}
+
+.est-card{background:rgba(255,255,255,.08);border-radius:8px;padding:1.5rem;display:flex;flex-direction:column}
+
+.details-table h1{margin-bottom:.6rem}
+.details-table .subhead{margin-bottom:1.3rem}
+.details-table table{width:100%;border-collapse:collapse;margin-bottom:1.3rem}
+.details-table th,.details-table td{padding:.6rem .8rem;border-bottom:1px solid #ffffff33;text-align:left}
+
+.highlight-table{align-items:center;text-align:center}
+.highlight-grid{display:flex;flex-direction:column;align-items:center;gap:3rem;margin-bottom:3rem;width:100%}
+.highlight-number{font-size:clamp(3.2rem,7vw,5rem);white-space:nowrap;line-height:1.05;
+  color:#ffeb3b;font-weight:700;text-shadow:0 2px 6px #0006}
+.highlight-pair{display:flex;flex-direction:column;align-items:center;gap:.35rem}
+.subtext{font-size:1rem;letter-spacing:.05rem;text-transform:uppercase;margin:0}
+
+.highlight-footer{display:flex;gap:1rem;justify-content:center;width:100%}
+
+button{margin-top:2rem;padding:.9rem 1.8rem;font-size:1rem;border:none;border-radius:6px;
+  cursor:pointer;background:#ffb703;color:#002844;font-weight:700;transition:opacity .25s}
+button:disabled{opacity:.4}
+.restartBtn{position:fixed;bottom:2rem;right:2rem;z-index:1000}
+
+#sumMonthlyPair{display:none}
+#slideSum .highlight-grid{grid-template-rows:auto auto}
+#slideSum .sum-footer{margin-top:1rem;display:flex;justify-content:center}
+#slideSum .sum-footer .backBtn{padding:.9rem 1.2rem}
+
+/*──────────────── 4 ▸ RESULT SLIDES – MOBILE (≤640 px) ─*/
+@media (max-width:640px){
+  .slide .slide-content.estimation{
+    padding:1.25rem;display:flex;flex-direction:column;max-width:480px;width:100%}
+
+  /* stack:   title  •  highlight  •  buttons   */
+  .est-grid{display:flex;flex-direction:column;gap:1.25rem}
+
+  /* show only title line from the old “left” pane */
+  .details-table{background:transparent;padding:0;margin:0}
+  .details-table .subhead,.details-table table{display:none}
+  .details-table h1{font-size:clamp(1.4rem,6vw,1.8rem);margin:0}
+
+  /* highlight block uses full width */
+  .highlight-table{background:rgba(255,255,255,.08);padding:1.25rem;border-radius:8px;
+    align-items:flex-start;text-align:left}
+  .highlight-grid{gap:1.4rem;margin:0 0 1.2rem}
+  .highlight-number{font-size:clamp(2.4rem,8vw,3rem);white-space:normal}
+
+  /* buttons always locked to bottom of card */
+  .highlight-footer{margin-top:auto}
+  .highlight-footer button,
+  #slideSum .sum-footer button{flex:1 1 48%}
+}
+
+/* gutters for ultra‑narrow phones */
+@media (max-width:400px){
+  .slide-content.inputs,
+  .slide .slide-content.estimation{margin-inline:1rem}
+}
+
+/* height‑based tweaks to avoid scroll on short screens */
+@media (max-height:800px){
+  .highlight-number{font-size:clamp(2.6rem,7vw,3rem)}
+  .highlight-grid{gap:1rem}}
+@media (max-height:700px){
+  .highlight-number{font-size:clamp(2.3rem,7vw,2.7rem)}}
+
+/*──────────────── 5 ▸ UTILITIES ─────────────────────────*/
+.valItem{opacity:0;transform:translateX(-60px);transition:.6s ease}
+.valItem.show{opacity:1;transform:translateX(0)}
+input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{display:none}
+</style>
+
+
+
+
+
+
+</head>
+<body>
+<!-- ────────────────  SLIDE 1 – INPUTS ──────────────── -->
+<section class="slide" id="slideInputs">
+  <div class="slide-content inputs">
+    <h1>CHIIRP DEMO</h1>
+    <h2>SEE THE VALUE OF CHIIRP</h2>
+
+    <div class="input-row">
+      <!-- Follow-Up (quotes) -->
+      <input id="quotes"    type="number" step="1"    min="0"
+             placeholder="Estimates sent per month"
+             aria-label="Estimates sent per month">
+    
+      <input id="quoteWins" type="number" step="1"    min="0"
+             placeholder="Estimates Accepted"
+             aria-label="Estimates Accepted">
+    
+      <!-- Speed-to-Lead (forms) -->
+      <input id="leads"     type="number" step="1"    min="0"
+             placeholder="Lead form submissions per month"
+             aria-label="Lead from submissions per month">
+    
+      <input id="formWins"  type="number" step="1"    min="0"
+             placeholder="Jobs scheduled from forms"
+             aria-label="Jobs scheduled from forms">
+    
+      <!-- Call Recovery (missed calls) -->
+      <input id="missedCalls" type="number" step="1" min="0"
+             placeholder="Missed calls per month"
+             aria-label="Monthly number of missed or abandoned calls">
+    
+      <input id="missedWins"  type="number" step="1" min="0"
+             placeholder="Jobs scheduled from missed calls"
+             aria-label="Closed deals that started as missed calls per month">
+    
+      <!-- Revenue (shared) -->
+      <input id="avgRev"    type="number" step="0.01" min="0"
+             placeholder="Avg revenue per job ($)"
+             aria-label="Average revenue per closed sale in dollars">
+    </div>
+
+      
+
+    <!-- Fixed plan cost for ROI -->
+    <input type="hidden" name="plan" value="1050">
+
+
+    <button id="calcBtn">Next ➡</button>
+  </div>
+</section>
+
+
+
+<!-- ────────────────  SLIDE 2 – ESTIMATION FOLLOW-UP ──────────────── -->
+<section class="slide" id="slideEst" style="display:none; opacity:0; transition:opacity .6s">
+  <div class="slide-content estimation">
+    <div class="est-grid">
+
+      <!-- LEFT CARD -->
+      <div class="est-card details-table">
+        <h1>Estimate: Follow-Up</h1>
+          <p class="subhead">Based on <strong><em>your</em></strong> monthly quotes and wins</p>
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody id="estValues"><!-- JS injects rows here --></tbody>
+        </table>
+
+      </div>
+
+      <!-- RIGHT CARD -->
+      <div class="est-card highlight-table">
+        <h3>Additional Revenue:</h3>
+
+        <div class="highlight-grid">
+          <div class="highlight-pair">
+            <p id="estGainMonthly" class="highlight-number">—</p>
+            <p class="subtext">per month</p>
+          </div>
+          <div class="highlight-pair">
+            <p id="estGainAnnual"  class="highlight-number">—</p>
+            <p class="subtext">per year</p>
+          </div>
+        </div>
+      </div><!-- end .highlight-table -->
+
+      <!-- FOOTER BUTTON -->
+      <!-- slideEst footer -->
+      <div class="highlight-footer">
+        <button id="backToInputs" class="backBtn">⬅ Back</button>
+        <button id="toS2L"        class="nextBtn">Next ➡</button>
+      </div>
+
+
+    </div><!-- end .est-grid -->
+  </div><!-- end .slide-content.estimation -->
+</section><!-- end .slide -->
+
+
+
+
+<!-- ────────────────  SLIDE 3 – SPEED-TO-LEAD ──────────────── -->
+<section class="slide" id="slideS2L" style="display:none; opacity:0; transition:opacity .6s">
+  <div class="slide-content estimation">
+    <div class="est-grid">
+
+      <!-- LEFT CARD: details + formulas -->
+      <div class="est-card details-table">
+        <h1>Speed-to-Lead</h1>
+          <p class="subhead">Based on <strong><em>your</em></strong> monthly form submissions and wins</p>
+        <table>
+          <thead>
+            <tr><th>Metric</th><th>Value</th></tr>
+          </thead>
+          <tbody id="s2lValues">
+            <!-- Rows will be injected here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RIGHT CARD: highlight + button -->
+      <div class="est-card highlight-table">
+        <h3>Additional Revenue:</h3>
+        <div class="highlight-grid">
+          <div class="highlight-pair">
+            <p id="s2lGainMonthly" class="highlight-number">—</p>
+            <p class="subtext">per month</p>
+          </div>
+          <div class="highlight-pair">
+            <p id="s2lGainAnnual" class="highlight-number">—</p>
+            <p class="subtext">per year</p>
+          </div>
+        </div>
+        <!-- slideS2L  (Speed-to-Lead) -->
+        <div class="highlight-footer">
+          <button id="backToEst"  class="backBtn">⬅ Back</button>
+          <button id="toMissed"   class="nextBtn">Next ➡</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ────────────────  SLIDE 4 – ABANDONED-CALL RECOVERY ──────────────── -->
+<section class="slide" id="slideMissed" style="display:none; opacity:0; transition:opacity .6s">
+  <div class="slide-content estimation">
+    <div class="est-grid">
+
+      <!-- LEFT CARD: details + formulas -->
+      <div class="est-card details-table">
+        <h1>Abandoned-Call Recovery</h1>
+          <p class="subhead">Based on <strong><em>your</em></strong> monthly abandoned calls and wins</p>
+        <table>
+          <thead>
+            <tr><th>Metric</th><th>Value</th></tr>
+          </thead>
+          <tbody id="missValues">
+            <!-- JS injects rows here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RIGHT CARD: highlight + button -->
+      <div class="est-card highlight-table">
+        <h3>Additional Revenue:</h3>
+        <div class="highlight-grid">
+          <div class="highlight-pair">
+            <p id="missGainMonthly" class="highlight-number">—</p>
+            <p class="subtext">per month</p>
+          </div>
+          <div class="highlight-pair">
+            <p id="missGainAnnual" class="highlight-number">—</p>
+            <p class="subtext">per year</p>
+          </div>
+        </div>
+        <!-- slideMissed  (Call Recovery) -->
+        <div class="highlight-footer">
+          <button id="backToS2L" class="backBtn">⬅ Back</button>
+          <button id="toSum"     class="nextBtn">Next ➡</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────  SLIDE 5 – SUMMARY ──────────────── -->
+<section class="slide" id="slideSum" style="display:none; opacity:0; transition:opacity .6s">
+  <div class="slide-content estimation">
+
+    <div class="est-grid">
+      <!-- LEFT CARD – monthly breakdown -->
+      <div class="est-card details-table">
+        <h1>Breakdown by Campaign</h1>
+        <table>
+          <thead><tr><th>Campaign</th><th>Monthly Gain</th></tr></thead>
+          <tbody id="sumValues"></tbody>
+        </table>
+      </div>
+
+      <!-- RIGHT CARD – totals -->
+      <div class="est-card highlight-table">
+        <h3>Total Additional Revenue:</h3>
+        <div class="highlight-grid">
+          <div class="highlight-pair" id="sumMonthlyPair">
+            <p id="sumGainMonthly" class="highlight-number">—</p>
+            <p class="subtext">per month</p>
+          </div>
+          <div class="highlight-pair">
+            <p id="sumGainAnnual" class="highlight-number">—</p>
+            <p class="subtext">per year</p>
+          </div>
+          <div class="highlight-pair">
+            <p id="sumROI" class="highlight-number">—×</p>
+            <p class="subtext">ROI</p>
+          </div>
+        </div>
+      </div><!-- /.highlight-table -->
+    </div><!-- /.est-grid -->
+
+    <!-- Back button sits below the cards -->
+    <div class="sum-footer">
+      <button id="backToMissed" class="backBtn">⬅ Back</button>
+    </div>
+
+
+
+  </div><!-- /.slide-content.estimation -->
+
+  <!-- Restart button fixed bottom-right -->
+  <button class="restartBtn" onclick="location.reload()">Restart ↻</button>
+</section>
+
+
+
+
+<script>
+(function () {
+  const g = id => document.getElementById(id);
+
+  // revenue buckets per campaign
+  let revLowEst = 0, revHighEst = 0;
+  let revLowS2L = 0, revHighS2L = 0;
+  let revLowMiss = 0, revHighMiss = 0;
+
+  /* explicit skip markers */
+let skippedEst  = false;
+let skippedS2L  = false;
+let skippedMiss = false;
+
+
+  /* UI helpers */
+  function revealSlide(id) {
+    document.querySelectorAll('.slide').forEach(s => s.style.display = 'none');
+    const el = g(id);
+    el.style.display = 'block';
+    requestAnimationFrame(() => el.style.opacity = 1);
+  }
+
+  function fmtMoney(n) {
+    return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+  function fmtRange(lo, hi) {
+    const low = Math.round(lo);
+    const high = Math.round(hi);
+    return low <= 0
+      ? `Up to $${fmtMoney(high)}`
+      : `$${fmtMoney(low)} – $${fmtMoney(high)}`;
+  }
+  function fmtROI(lo, hi) {
+    const l = Number(lo) || 0;
+    const h = Number(hi) || 0;
+    const f = x => Number(x).toFixed(1);
+    return l <= 1
+      ? `Up to ${f(h)}×`
+      : `${f(l)}× – ${f(h)}×`;
+  }
+
+  /* core calculator */
+  function calcRange({ current, pool, lowPct, highPct, avgRev }) {
+    const baselineLow = pool * lowPct;
+    const baselineHigh = pool * highPct;
+
+    const lowWins = Math.max(baselineLow, current);
+
+    // if user is already beating our high case, bump by 5.298 %
+    let highWins = current > baselineHigh ? current * 1.05298 : baselineHigh;
+    if (highWins < lowWins) highWins = lowWins;      // guard
+
+    return {
+      lowWins,
+      highWins,
+      revLow:  (lowWins  - current) * avgRev,
+      revHigh: (highWins - current) * avgRev
+    };
+  }
+
+  /* 1) Inputs → Estimate Follow-Up */
+  g('calcBtn').addEventListener('click', () => {
+    const Q = +g('quotes').value;
+    const AR = +g('avgRev').value;
+    skippedS2L = false;
+    const W3 = +g('quoteWins').value;
+// === enhanced skip of Follow‑Up =========================================
+if (!Q && !W3) {
+  revLowEst = revHighEst = 0;                // nothing from this campaign
+  skippedEst = true;              // <‑‑ NEW line
+  g('toS2L').click();                        // programmatically continue flow
+  return;
+}
+// === end enhanced skip ==================================================
+
+// === end skip block ===
+
+    const { lowWins, highWins, revLow, revHigh } = calcRange({
+      current: W3, pool: Q, lowPct: 0.10, highPct: 0.20, avgRev: AR
+    });
+    revLowEst = revLow;
+    revHighEst = revHigh;
+    skippedEst = false;
+
+    g('estValues').innerHTML = [
+      ['Quotes / mo',        Q],
+      ['Chiirp wins (low)',  lowWins.toFixed(1)],
+      ['Chiirp wins (high)', highWins.toFixed(1)],
+      ['Monthly gain',       fmtRange(revLowEst, revHighEst)]
+    ].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join('');
+
+    g('estGainMonthly').textContent = fmtRange(revLowEst, revHighEst);
+    g('estGainAnnual').textContent  = fmtRange(revLowEst * 12, revHighEst * 12);
+
+    revealSlide('slideEst');
+  });
+
+  /* 2) Estimate → Speed-to-Lead */
+  g('toS2L').addEventListener('click', () => {
+    const F = +g('leads').value;
+    const AR = +g('avgRev').value;
+    const W1 = +g('formWins').value;
+    
+// === enhanced skip of Speed‑to‑Lead (handles double‑skip) ===============
+if (!F && !W1) {
+  skippedS2L = true; 
+  revLowS2L = revHighS2L = 0;               // this campaign contributes zero
+
+
+  const M  = +g('missedCalls').value;
+  const W2 = +g('missedWins').value;
+
+
+  // -------- CASE 2a: Missed‑Call inputs ALSO blank  --------------------
+  if (!M && !W2) {
+    skippedMiss = true; 
+  
+    
+    const monthlyCost = +document.querySelector('input[name="plan"]').value || 0;
+    const lowTotal  = revLowEst + revLowS2L + revLowMiss;
+    const highTotal = revHighEst + revHighS2L + revHighMiss;
+    const roiLow  = monthlyCost ? lowTotal  / monthlyCost : 0;
+    const roiHigh = monthlyCost ? highTotal / monthlyCost : 0;
+
+    const rows = [
+      revLowEst || revHighEst ? ['Estimation Follow‑Up', fmtRange(revLowEst, revHighEst)] : null
+    ].filter(Boolean);
+
+    g('sumValues').innerHTML = rows
+      .map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`)
+      .join('');
+    g('sumGainMonthly').textContent = fmtRange(lowTotal, highTotal);
+    g('sumGainAnnual').textContent  = fmtRange(lowTotal * 12, highTotal * 12);
+    g('sumROI').textContent         = fmtROI(roiLow, roiHigh);
+
+    revealSlide('slideSum');        // jump straight to summary
+    return;
+  }
+
+  // -------- CASE 2b: We DO have Missed‑Call numbers  --------------------
+  const { lowWins, highWins, revLow, revHigh } = calcRange({
+    current: W2, pool: M, lowPct: 0.20, highPct: 0.35, avgRev: AR
+  });
+  revLowMiss  = revLow;
+  revHighMiss = revHigh;
+  skippedMiss = false;
+  
+  g('missValues').innerHTML = [
+    ['Abandoned calls / mo', M],
+    ['With Chiirp (low)',    lowWins.toFixed(1)],
+    ['With Chiirp (high)',   highWins.toFixed(1)],
+    ['Monthly gain',         fmtRange(revLowMiss, revHighMiss)]
+  ].map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join('');
+
+  g('missGainMonthly').textContent = fmtRange(revLowMiss, revHighMiss);
+  g('missGainAnnual').textContent  = fmtRange(revLowMiss * 12, revHighMiss * 12);
+
+  revealSlide('slideMissed');      // now fully populated
+  return;
+}
+// === end enhanced skip ==================================================
+
+// === end skip block ===
+
+    const { lowWins, highWins, revLow, revHigh } = calcRange({
+      current: W1, pool: F, lowPct: 0.15, highPct: 0.35, avgRev: AR
+    });
+    revLowS2L = revLow;
+    revHighS2L = revHigh;
+    
+    g('s2lValues').innerHTML = [
+      ['Form submissions / mo', F],
+      ['With Chiirp (low)',     lowWins.toFixed(1)],
+      ['With Chiirp (high)',    highWins.toFixed(1)],
+      ['Monthly gain',          fmtRange(revLowS2L, revHighS2L)]
+    ].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join('');
+
+    g('s2lGainMonthly').textContent = fmtRange(revLowS2L, revHighS2L);
+    g('s2lGainAnnual').textContent  = fmtRange(revLowS2L * 12, revHighS2L * 12);
+
+    revealSlide('slideS2L');
+  });
+
+  /* 3) Speed-to-Lead → Abandoned-Call Recovery */
+  g('toMissed').addEventListener('click', () => {
+    const M = +g('missedCalls').value;
+    const W2 = +g('missedWins').value || 0;
+    const AR = +g('avgRev').value;
+// === skip Missed‑Call Recovery when both missed‑call inputs are blank ===
+if (!M && !W2) {
+  skippedMiss = true;
+  revLowMiss = revHighMiss = 0;
+
+  /* build summary immediately */
+  const monthlyCost = +document.querySelector('input[name="plan"]').value || 0;
+  const lowTotal  = revLowEst  + revLowS2L  + revLowMiss;
+  const highTotal = revHighEst + revHighS2L + revHighMiss;
+  const roiLow  = monthlyCost ? lowTotal  / monthlyCost : 0;
+  const roiHigh = monthlyCost ? highTotal / monthlyCost : 0;
+
+  const rows = [
+    revLowEst || revHighEst ? ['Estimation Follow‑Up', fmtRange(revLowEst, revHighEst)] : null,
+    revLowS2L || revHighS2L ? ['Speed‑to‑Lead',        fmtRange(revLowS2L, revHighS2L)] : null
+  ].filter(Boolean);
+
+  g('sumValues').innerHTML   = rows.map(([l,v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join('');
+  g('sumGainMonthly').textContent = fmtRange(lowTotal, highTotal);
+  g('sumGainAnnual').textContent  = fmtRange(lowTotal * 12, highTotal * 12);
+  g('sumROI').textContent         = fmtROI(roiLow, roiHigh);
+
+  revealSlide('slideSum');
+  return;
+}
+// === end skip block ===
+
+    const { lowWins, highWins, revLow, revHigh } = calcRange({
+      current: W2, pool: M, lowPct: 0.20, highPct: 0.35, avgRev: AR
+    });
+    revLowMiss = revLow;
+    revHighMiss = revHigh;
+    skippedMiss = false;
+
+    g('missValues').innerHTML = [
+      ['Abandoned calls / mo', M],
+      ['With Chiirp (low)',    lowWins.toFixed(1)],
+      ['With Chiirp (high)',   highWins.toFixed(1)],
+      ['Monthly gain',         fmtRange(revLowMiss, revHighMiss)]
+    ].map(([l, v]) => `<tr><td>${l}</td><td>${v}</td></tr>`).join('');
+
+    g('missGainMonthly').textContent = fmtRange(revLowMiss, revHighMiss);
+    g('missGainAnnual').textContent  = fmtRange(revLowMiss * 12, revHighMiss * 12);
+
+    revealSlide('slideMissed');
+  });
+
+
+
+/* 4) Abandoned‑Call → Summary */
+g('toSum').addEventListener('click', () => {
+  const monthlyCost = +document.querySelector('input[name="plan"]').value || 0;
+
+  const lowTotal  = revLowEst  + revLowS2L  + revLowMiss;
+  const highTotal = revHighEst + revHighS2L + revHighMiss;
+
+  const roiLow  = monthlyCost > 0 ? lowTotal  / monthlyCost : 0;
+  const roiHigh = monthlyCost > 0 ? highTotal / monthlyCost : 0;
+
+  // build rows only for campaigns that have non‑zero gains
+  const rows = [
+    revLowEst  || revHighEst  ? ['Estimation Follow‑Up', fmtRange(revLowEst,  revHighEst)] : null,
+    revLowS2L  || revHighS2L  ? ['Speed‑to‑Lead',        fmtRange(revLowS2L,  revHighS2L)] : null,
+    revLowMiss || revHighMiss ? ['Call Recovery',        fmtRange(revLowMiss, revHighMiss)] : null
+  ].filter(Boolean);
+
+  g('sumValues').innerHTML = rows
+    .map(([l, v]) => `<tr><td>${l}</td><td>${v}</td></tr>`)
+    .join('');
+
+  g('sumGainMonthly').textContent = fmtRange(lowTotal, highTotal);
+  g('sumGainAnnual').textContent  = fmtRange(lowTotal * 12, highTotal * 12);
+  g('sumROI').textContent         = fmtROI(roiLow, roiHigh);
+
+  revealSlide('slideSum');
+});
+
+  /* back navigation */
+/* back navigation ------------------------------------------------------*/
+g('backToInputs').addEventListener('click', () => revealSlide('slideInputs'));
+
+/* ← from Speed‑to‑Lead */
+g('backToEst').addEventListener('click', () => {
+  // If the Estimate slide was skipped, jump straight to Inputs
+  revealSlide(skippedEst ? 'slideInputs' : 'slideEst');
+});
+
+/* ← from Missed‑Call Recovery */
+g('backToS2L').addEventListener('click', () => {
+  if (skippedS2L) {
+    // Speed‑to‑Lead was skipped; fall back to whichever slide exists
+    revealSlide(skippedEst ? 'slideInputs' : 'slideEst');
+  } else {
+    revealSlide('slideS2L');
+  }
+});
+
+/* ← from Summary */
+g('backToMissed').addEventListener('click', () => {
+  if (skippedMiss) {                              // Missed‑Call skipped
+    if (skippedS2L) {                             // S2L also skipped
+      revealSlide(skippedEst ? 'slideInputs' : 'slideEst');
+    } else {
+      revealSlide('slideS2L');
+    }
+  } else {
+    revealSlide('slideMissed');
+  }
+});
+/* ---------------------------------------------------------------------*/
+
+
+
+})();
+</script>
+
+
+
+</body>
+</html>
+  
